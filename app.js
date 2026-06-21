@@ -79,8 +79,42 @@ function setGender(g) {
   renderSection(currentSection);
 }
 
+// ── Tela de carregamento ──────────────────────────────────
+function _showLoadingOverlay() {
+  if (document.getElementById('db-loading-overlay')) return;
+  const div = document.createElement('div');
+  div.id = 'db-loading-overlay';
+  div.style.cssText =
+    'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;' +
+    'justify-content:center;flex-direction:column;gap:1rem;' +
+    'background:var(--navy, #0a1628);color:var(--gold, #d4a017);' +
+    'font-family:"Inter",sans-serif;';
+  div.innerHTML =
+    '<div style="font-family:\'Bebas Neue\',cursive;font-size:1.5rem">Carregando dados…</div>' +
+    '<div style="font-size:0.85rem;color:#999">Conectando ao banco de dados</div>';
+  document.body.appendChild(div);
+}
+
+function _hideLoadingOverlay() {
+  const el = document.getElementById('db-loading-overlay');
+  if (el) el.remove();
+}
+
+// Chamado por data.js quando o Firestore carregou pela primeira vez
+function onDatabaseReady() {
+  _hideLoadingOverlay();
+  updateGenderBadges();
+  renderSection(currentSection);
+}
+
+// Chamado por data.js sempre que algum dado mudar (de qualquer usuário)
+function onDatabaseChanged() {
+  updateGenderBadges();
+  renderSection(currentSection);
+}
+
 // ── Inicialização ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  updateGenderBadges();
-  renderHome();
+  _showLoadingOverlay();
+  startDB();
 });

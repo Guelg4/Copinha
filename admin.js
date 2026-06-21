@@ -87,17 +87,10 @@ function saveEquipe() {
 
   if (!obj.nome) { alert('Preencha o nome da equipe!'); return; }
 
-  if (id) {
-    const i = DB.equipes.findIndex(e => e.id === id);
-    if (i >= 0) DB.equipes[i] = { ...DB.equipes[i], ...obj };
-  } else {
-    DB.equipes.push({ id: 'e' + uid(), ...obj });
-  }
-
-  saveDB();
-  clearEquipeForm();
-  renderAdminEquipes();
-  alert('Equipe salva com sucesso!');
+  const ref = id ? db.collection('equipes').doc(id) : db.collection('equipes').doc();
+  ref.set(obj, { merge: true })
+    .then(() => { clearEquipeForm(); alert('Equipe salva com sucesso!'); })
+    .catch(err => alert('Erro ao salvar equipe: ' + err.message));
 }
 
 function editEquipe(id) {
@@ -115,9 +108,7 @@ function editEquipe(id) {
 
 function deleteEquipe(id) {
   if (!confirm('Tem certeza que deseja excluir esta equipe?')) return;
-  DB.equipes = DB.equipes.filter(e => e.id !== id);
-  saveDB();
-  renderAdminEquipes();
+  db.collection('equipes').doc(id).delete().catch(err => alert('Erro ao excluir: ' + err.message));
 }
 
 function clearEquipeForm() {
@@ -183,17 +174,10 @@ function saveJogador() {
 
   if (!obj.nome) { alert('Preencha o nome do jogador!'); return; }
 
-  if (id) {
-    const i = DB.jogadores.findIndex(j => j.id === id);
-    if (i >= 0) DB.jogadores[i] = { ...DB.jogadores[i], ...obj };
-  } else {
-    DB.jogadores.push({ id: 'j' + uid(), ...obj });
-  }
-
-  saveDB();
-  clearJogadorForm();
-  renderAdminJogadores();
-  alert('Jogador salvo!');
+  const ref = id ? db.collection('jogadores').doc(id) : db.collection('jogadores').doc();
+  ref.set(obj, { merge: true })
+    .then(() => { clearJogadorForm(); alert('Jogador salvo!'); })
+    .catch(err => alert('Erro ao salvar jogador: ' + err.message));
 }
 
 function editJogador(id) {
@@ -209,9 +193,7 @@ function editJogador(id) {
 
 function deleteJogador(id) {
   if (!confirm('Excluir jogador?')) return;
-  DB.jogadores = DB.jogadores.filter(j => j.id !== id);
-  saveDB();
-  renderAdminJogadores();
+  db.collection('jogadores').doc(id).delete().catch(err => alert('Erro ao excluir: ' + err.message));
 }
 
 function clearJogadorForm() {
@@ -264,16 +246,19 @@ function renderAdminJogos() {
 function saveJogo() {
   const id   = document.getElementById('jogo-id').value;
   const fase = document.getElementById('jogo-fase').value;
+  const cat  = document.getElementById('jogo-cat').value;
   const obj  = {
-    cat:   document.getElementById('jogo-cat').value,
+    cat,
     fase,
     t1:    document.getElementById('jogo-t1').value,
     t2:    document.getElementById('jogo-t2').value,
     data:  document.getElementById('jogo-data').value,
     hora:  document.getElementById('jogo-hora').value,
     local: document.getElementById('jogo-local').value.trim(),
-    sf_num: fase === 'SF' ? _nextSFNum(document.getElementById('jogo-cat').value) : undefined,
   };
+  if (fase === 'SF' && !id) {
+    obj.sf_num = _nextSFNum(cat);
+  }
 
   if (!obj.t1 || !obj.t2 || obj.t1 === obj.t2) {
     alert('Selecione dois times diferentes!');
@@ -281,23 +266,17 @@ function saveJogo() {
   }
 
   if (id) {
-    const i = DB.jogos.findIndex(j => j.id === id);
-    if (i >= 0) {
-      DB.jogos[i] = {
-        ...DB.jogos[i], ...obj,
-        played: DB.jogos[i].played,
-        g1: DB.jogos[i].g1,
-        g2: DB.jogos[i].g2,
-      };
-    }
+    db.collection('jogos').doc(id).set(obj, { merge: true })
+      .then(() => { clearJogoForm(); alert('Jogo salvo!'); })
+      .catch(err => alert('Erro ao salvar jogo: ' + err.message));
   } else {
-    DB.jogos.push({ id: 'g' + uid(), ...obj, played: false, g1: null, g2: null });
+    obj.played = false;
+    obj.g1 = null;
+    obj.g2 = null;
+    db.collection('jogos').add(obj)
+      .then(() => { clearJogoForm(); alert('Jogo salvo!'); })
+      .catch(err => alert('Erro ao salvar jogo: ' + err.message));
   }
-
-  saveDB();
-  clearJogoForm();
-  renderAdminJogos();
-  alert('Jogo salvo!');
 }
 
 function _nextSFNum(cat) {
@@ -324,9 +303,7 @@ function editJogo(id) {
 
 function deleteJogo(id) {
   if (!confirm('Excluir este jogo?')) return;
-  DB.jogos = DB.jogos.filter(j => j.id !== id);
-  saveDB();
-  renderAdminJogos();
+  db.collection('jogos').doc(id).delete().catch(err => alert('Erro ao excluir: ' + err.message));
 }
 
 function clearJogoForm() {
@@ -383,18 +360,15 @@ function openResultadoModal(jogoid) {
 
 function saveResultado() {
   const id = document.getElementById('res-jogo-id').value;
-  const m  = DB.jogos.find(j => j.id === id);
+  const m  = getMatch(id);
   if (!m) return;
 
-  m.g1     = parseInt(document.getElementById('res-g1').value) || 0;
-  m.g2     = parseInt(document.getElementById('res-g2').value) || 0;
-  m.played = true;
+  const g1 = parseInt(document.getElementById('res-g1').value) || 0;
+  const g2 = parseInt(document.getElementById('res-g2').value) || 0;
 
-  saveDB();
-  closeModal('modal-resultado');
-  renderAdminResultados();
-  renderAdminGols();
-  alert('Resultado salvo!');
+  db.collection('jogos').doc(id).set({ g1, g2, played: true }, { merge: true })
+    .then(() => { closeModal('modal-resultado'); alert('Resultado salvo!'); })
+    .catch(err => alert('Erro ao salvar resultado: ' + err.message));
 }
 
 // =========================================================
@@ -448,10 +422,9 @@ function saveGolInline() {
 
   if (!jogoid || !timeid) { alert('Selecione a partida e o time!'); return; }
 
-  DB.gols.push({ id: 'gol' + uid(), cat, jogoid, timeid, jogadorid, jogador, min: min || null });
-  saveDB();
-  renderAdminGols();
-  alert('Gol registrado!');
+  db.collection('gols').add({ cat, jogoid, timeid, jogadorid, jogador, min: min || null })
+    .then(() => alert('Gol registrado!'))
+    .catch(err => alert('Erro ao registrar gol: ' + err.message));
 }
 
 function renderAdminGols() {
@@ -481,9 +454,7 @@ function renderAdminGols() {
 
 function deleteGol(id) {
   if (!confirm('Remover este gol?')) return;
-  DB.gols = DB.gols.filter(g => g.id !== id);
-  saveDB();
-  renderAdminGols();
+  db.collection('gols').doc(id).delete().catch(err => alert('Erro ao excluir: ' + err.message));
 }
 
 // =========================================================
@@ -525,38 +496,41 @@ function saveUser() {
   if (!u || !p)                        { alert('Preencha usuário e senha!'); return; }
   if (DB.users.find(x => x.username === u)) { alert('Usuário já existe!');      return; }
 
-  DB.users.push({ id: 'u' + uid(), username: u, password: p, role: r });
-  saveDB();
-  renderAdminUsers();
-  document.getElementById('new-user').value = '';
-  document.getElementById('new-pass').value = '';
-  alert('Usuário adicionado!');
+  db.collection('users').add({ username: u, password: p, role: r })
+    .then(() => {
+      document.getElementById('new-user').value = '';
+      document.getElementById('new-pass').value = '';
+      alert('Usuário adicionado!');
+    })
+    .catch(err => alert('Erro ao adicionar usuário: ' + err.message));
 }
 
 function deleteUser(id) {
   if (!confirm('Remover este usuário?')) return;
-  DB.users = DB.users.filter(u => u.id !== id);
-  saveDB();
-  renderAdminUsers();
+  db.collection('users').doc(id).delete().catch(err => alert('Erro ao excluir: ' + err.message));
 }
 
 // =========================================================
 //  CONFIG
 // =========================================================
 function saveConfig() {
-  DB.config.regulamento = document.getElementById('config-reg').value;
-  DB.config.ano         = document.getElementById('config-ano').value;
-  saveDB();
-  alert('Configurações salvas!');
+  const config = {
+    regulamento: document.getElementById('config-reg').value,
+    ano:         document.getElementById('config-ano').value,
+  };
+  db.collection('meta').doc('config').set(config, { merge: true })
+    .then(() => alert('Configurações salvas!'))
+    .catch(err => alert('Erro ao salvar configurações: ' + err.message));
 }
 
 function confirmReset(cat) {
   const label = cat === 'M' ? 'Masculino' : 'Feminino';
   if (!confirm(`ATENÇÃO! Isso irá remover TODOS os jogos, gols e resultados do ${label}.\nEquipes e jogadores serão mantidos.\n\nContinuar?`)) return;
 
-  DB.jogos = DB.jogos.filter(j => j.cat !== cat);
-  DB.gols  = DB.gols.filter(g  => g.cat !== cat);
-  saveDB();
-  renderAdmin();
-  alert(`Dados do ${label} resetados!`);
+  const batch = db.batch();
+  DB.jogos.filter(j => j.cat === cat).forEach(j => batch.delete(db.collection('jogos').doc(j.id)));
+  DB.gols.filter(g => g.cat === cat).forEach(g => batch.delete(db.collection('gols').doc(g.id)));
+  batch.commit()
+    .then(() => alert(`Dados do ${label} resetados!`))
+    .catch(err => alert('Erro ao resetar dados: ' + err.message));
 }

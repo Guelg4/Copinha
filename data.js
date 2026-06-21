@@ -1,16 +1,14 @@
 /* =========================================================
-   data.js — Banco de dados local (localStorage) + helpers
+   data.js — Banco de dados compartilhado (Firebase Firestore) + helpers
    ========================================================= */
-
-const STORE_KEY = 'copinha_data_v2';
 
 // ── Dados padrão ─────────────────────────────────────────
 function defaultData() {
   return {
     config: {
-      ano: '2025',
+      ano: '2026',
       regulamento: [
-        'REGULAMENTO COPINHA 2025',
+        'REGULAMENTO COPINHA 2026',
         '',
         'FASE DE GRUPOS',
         '• Vitória = 3 pontos',
@@ -78,45 +76,73 @@ function defaultData() {
 }
 
 // ── Persistência ─────────────────────────────────────────
-let DB = loadDB();
+// ── Persistência (Firebase Firestore) ─────────────────────
+// Cada coleção do Firestore corresponde a uma lista do DB.
+// Os dados ficam sincronizados em tempo real entre todos os usuários.
 
-function loadDB() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return defaultData();
-    const d   = JSON.parse(raw);
-    const def = defaultData();
+const COLLECTIONS = ['equipes', 'jogadores', 'jogos', 'gols', 'users'];
 
-    // Garante campos obrigatórios
-    if (!d.config)    d.config    = def.config;
-    if (!d.users)     d.users     = def.users;
-    if (!d.jogadores) d.jogadores = [];
-    if (!d.jogos)     d.jogos     = [];
-    if (!d.gols)      d.gols      = [];
+let DB = defaultData();
+let dbReady = false;
+let _pendingLoads = COLLECTIONS.length + 1; // +1 para o config
 
-    // Sincroniza escudos automaticamente a partir do codigo-fonte.
-    // Assim, atualizar data.js reflete sem apagar jogos/resultados salvos.
-    const escudosDefault = {};
-    def.equipes.forEach(e => { escudosDefault[e.id] = e.escudo; });
-
-    if (d.equipes) {
-      d.equipes.forEach(e => {
-        if (escudosDefault[e.id] !== undefined) {
-          e.escudo = escudosDefault[e.id];
-        }
-      });
-    } else {
-      d.equipes = def.equipes;
-    }
-
-    return d;
-  } catch (e) {
-    return defaultData();
+function _afterFirstLoad() {
+  if (dbReady) return;
+  _pendingLoads--;
+  if (_pendingLoads <= 0) {
+    dbReady = true;
+    if (typeof onDatabaseReady === 'function') onDatabaseReady();
   }
 }
 
-function saveDB() {
-  localStorage.setItem(STORE_KEY, JSON.stringify(DB));
+function _refreshAfterChange() {
+  if (!dbReady) return;
+  if (typeof onDatabaseChanged === 'function') onDatabaseChanged();
+}
+
+function startDB() {
+  // Config (documento único)
+  db.collection('meta').doc('config').onSnapshot(snap => {
+    if (snap.exists) {
+      DB.config = snap.data();
+    } else {
+      // Primeira vez: grava a configuração padrão
+      db.collection('meta').doc('config').set(DB.config).catch(console.error);
+    }
+    _afterFirstLoad();
+    _refreshAfterChange();
+  }, err => { console.error('Erro ao ler config:', err); _afterFirstLoad(); });
+
+  // Coleções em lista
+  COLLECTIONS.forEach(name => {
+    db.collection(name).onSnapshot(snapshot => {
+      DB[name] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      _afterFirstLoad();
+      _refreshAfterChange();
+    }, err => { console.error('Erro ao ler ' + name + ':', err); _afterFirstLoad(); });
+  });
+
+  // Semeia equipes e usuários padrão na primeira execução (banco vazio)
+  db.collection('equipes').get().then(snap => {
+    if (snap.empty) {
+      const batch = db.batch();
+      defaultData().equipes.forEach(e => {
+        const { id, ...rest } = e;
+        batch.set(db.collection('equipes').doc(id), rest);
+      });
+      batch.commit().catch(console.error);
+    }
+  });
+  db.collection('users').get().then(snap => {
+    if (snap.empty) {
+      const batch = db.batch();
+      defaultData().users.forEach(u => {
+        const { id, ...rest } = u;
+        batch.set(db.collection('users').doc(id), rest);
+      });
+      batch.commit().catch(console.error);
+    }
+  });
 }
 
 // ── Query helpers ─────────────────────────────────────────

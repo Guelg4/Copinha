@@ -647,15 +647,192 @@ body {
 .dot-gray   { background: var(--gray2); }
 
 /* =========================================================
-   RESPONSIVE
+   HAMBURGER MENU
    ========================================================= */
-@media (max-width: 700px) {
-  .top-nav { display: none; }
-  .section { padding: 1.25rem 1rem; }
-  .hero-title { letter-spacing: 4px; }
-  .bracket { min-width: 500px; }
-  .upcoming-card { grid-template-columns: 1fr auto 1fr; }
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: background 0.2s;
 }
-@media (max-width: 400px) {
-  .match-card { flex-direction: column; gap: 0.5rem; }
+.hamburger:hover { background: var(--navy3); }
+.hamburger span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+.hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Menu mobile overlay */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  top: 62px;
+  left: 0; right: 0;
+  background: rgba(10,15,30,0.98);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  z-index: 999;
+  padding: 0.75rem 1rem 1rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  transform: translateY(-110%);
+  transition: transform 0.3s ease;
+}
+.mobile-nav.open {
+  transform: translateY(0);
+}
+.mobile-nav .nav-btn {
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+/* =========================================================
+   RESPONSIVE — TABLET (≤ 768px)
+   ========================================================= */
+@media (max-width: 768px) {
+  /* Topbar */
+  .hamburger { display: flex; }
+  .mobile-nav { display: flex; }
+  .top-nav  { display: none; }
+
+  #topbar {
+    padding: 0 1rem;
+    gap: 0.75rem;
+  }
+
+  .admin-link { display: none; }
+
+  /* Seções */
+  .section {
+    padding: 1.5rem 1rem;
+    margin-top: 62px;
+  }
+
+  /* Hero */
+  .hero { padding: 3rem 1.5rem 2rem; }
+  .hero-title { font-size: clamp(2.5rem, 10vw, 5rem); letter-spacing: 4px; }
+  .hero-subtitle { font-size: 12px; }
+  .hero-trophy { font-size: 3.5rem; }
+
+  /* Cards de estatísticas */
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  /* Tabela de classificação */
+  .data-table { font-size: 12px; }
+  .data-table th,
+  .data-table td { padding: 8px 6px; }
+
+  /* Ocultar colunas menos importantes em mobile */
+  .data-table .col-hide-mobile { display: none; }
+
+  /* Match cards */
+  .match-card {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+  .match-teams  { flex-direction: column; gap: 0.75rem; }
+  .match-score  { font-size: 1.5rem; }
+
+  /* Upcoming cards */
+  .upcoming-card {
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+  .upcoming-card .team-name { font-size: 11px; }
+
+  /* Chaveamento */
+  .bracket { min-width: 480px; }
+  .bracket-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Admin */
+  .admin-tabs { flex-wrap: wrap; gap: 0.4rem; }
+  .admin-tab  { padding: 6px 10px; font-size: 11px; }
+  .form-grid  { grid-template-columns: 1fr; }
+
+  /* Artilharia */
+  .top-scorer-card { flex-direction: column; text-align: center; gap: 0.5rem; }
+
+  /* Equipes */
+  .teams-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  /* Modais */
+  .modal {
+    width: calc(100% - 2rem);
+    margin: 1rem;
+    max-width: 100%;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE — MOBILE (≤ 480px)
+   ========================================================= */
+@media (max-width: 480px) {
+  /* Cards vão para 1 coluna */
+  .cards-grid { grid-template-columns: 1fr; }
+  .teams-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+
+  /* Tabela: só colunas essenciais */
+  .data-table th:nth-child(n+5):not(:last-child),
+  .data-table td:nth-child(n+5):not(:last-child) { display: none; }
+
+  /* Gender toggle menor */
+  .gender-btn { padding: 5px 8px; font-size: 11px; }
+
+  /* Logo compacto */
+  .logo-sub  { display: none; }
+  .logo-text { font-size: 18px; }
+
+  /* Upcoming em coluna */
+  .upcoming-card {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .upcoming-card .uc-vs    { order: 0; }
+  .upcoming-card .uc-home  { order: -1; }
+  .upcoming-card .uc-away  { order: 1; }
+
+  /* Match cards */
+  .match-card { gap: 0.5rem; }
+
+  /* Chaveamento */
+  .bracket { min-width: 420px; }
+  .bracket-team { padding: 6px 8px; }
+  .bt-name  { font-size: 11px; }
+}
+
+/* =========================================================
+   RESPONSIVE — TELAS MUITO PEQUENAS (≤ 360px)
+   ========================================================= */
+@media (max-width: 360px) {
+  #topbar { padding: 0 0.75rem; }
+  .hero-title { font-size: 2.2rem; }
+  .gender-btn { padding: 4px 6px; font-size: 10px; }
+  .teams-grid { grid-template-columns: 1fr; }
 }
